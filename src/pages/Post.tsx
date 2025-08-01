@@ -5,144 +5,6 @@ import Header from "@/components/Header";
 import { BlogPost } from "@/types/blog";
 import { Calendar, Clock, User, ArrowLeft } from "lucide-react";
 
-// This would normally come from your API
-const mockPosts: BlogPost[] = [
-  {
-    id: "1",
-    title: "Getting Started with React and TypeScript",
-    excerpt: "Learn how to set up a modern React application with TypeScript, covering best practices and essential configurations.",
-    content: `# Getting Started with React and TypeScript
-
-React and TypeScript make a powerful combination for building robust web applications. In this post, we'll explore how to set up a modern React application with TypeScript.
-
-## Why TypeScript?
-
-TypeScript provides static type checking, which helps catch errors early in development and improves code maintainability. Here are some key benefits:
-
-- **Type Safety**: Catch errors at compile time rather than runtime
-- **Better IDE Support**: Enhanced autocomplete and refactoring tools
-- **Improved Documentation**: Types serve as documentation for your code
-- **Easier Refactoring**: Confident code changes with type checking
-
-## Setting Up Your Project
-
-First, create a new React project with TypeScript support:
-
-\`\`\`bash
-npx create-react-app my-app --template typescript
-cd my-app
-npm start
-\`\`\`
-
-This creates a new project with all the necessary TypeScript configurations.
-
-## Key TypeScript Concepts for React
-
-### Component Props
-
-Always define interfaces for your component props:
-
-\`\`\`typescript
-interface ButtonProps {
-  children: React.ReactNode;
-  onClick: () => void;
-  variant?: 'primary' | 'secondary';
-}
-
-const Button: React.FC<ButtonProps> = ({ children, onClick, variant = 'primary' }) => {
-  return (
-    <button 
-      className={\`btn btn-\${variant}\`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-};
-\`\`\`
-
-### State with TypeScript
-
-Use generic types with useState for complex state:
-
-\`\`\`typescript
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
-
-const [user, setUser] = useState<User | null>(null);
-\`\`\`
-
-## Best Practices
-
-1. **Use interfaces over types** for object shapes
-2. **Enable strict mode** in tsconfig.json
-3. **Use generic types** for reusable components
-4. **Leverage utility types** like Partial, Pick, and Omit
-
-## Conclusion
-
-TypeScript with React provides a robust foundation for building maintainable applications. Start with basic typing and gradually adopt more advanced patterns as you become comfortable with the language.`,
-    author: "John Doe",
-    publishedAt: "2024-01-15",
-    readTime: "5 min read",
-    tags: ["React", "TypeScript", "Web Development"],
-    imageUrl: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=400&fit=crop"
-  },
-  {
-    id: "2",
-    title: "Modern CSS Techniques for Better Layouts",
-    excerpt: "Discover the latest CSS features and techniques that will revolutionize how you approach web layouts and design.",
-    content: `# Modern CSS Techniques for Better Layouts
-
-CSS has evolved tremendously in recent years. Let's explore some modern techniques that will improve your layouts.
-
-## CSS Grid vs Flexbox
-
-Understanding when to use CSS Grid versus Flexbox is crucial for modern web development.
-
-### CSS Grid
-- Best for two-dimensional layouts
-- Great for complex page layouts
-- Provides precise control over rows and columns
-
-### Flexbox
-- Best for one-dimensional layouts
-- Perfect for component-level layouts
-- Excellent for alignment and distribution`,
-    author: "Jane Smith",
-    publishedAt: "2024-01-10",
-    readTime: "8 min read",
-    tags: ["CSS", "Web Design", "Frontend"],
-    imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=400&fit=crop"
-  },
-  {
-    id: "3",
-    title: "Building Scalable Node.js Applications",
-    excerpt: "Best practices for building maintainable and scalable backend applications with Node.js and Express.",
-    content: `# Building Scalable Node.js Applications
-
-Creating scalable Node.js applications requires careful planning and adherence to best practices.
-
-## Project Structure
-
-A well-organized project structure is the foundation of any scalable application.
-
-## Key Principles
-
-1. **Separation of Concerns**: Keep your business logic separate from your route handlers
-2. **Error Handling**: Implement comprehensive error handling
-3. **Environment Configuration**: Use environment variables for configuration`,
-    author: "Mike Johnson",
-    publishedAt: "2024-01-05",
-    readTime: "12 min read",
-    tags: ["Node.js", "Backend", "JavaScript"],
-    imageUrl: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=800&h=400&fit=crop"
-  }
-];
-
 const Post = () => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -151,23 +13,33 @@ const Post = () => {
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        // TODO: Replace with your actual API endpoint
-        // const response = await fetch(`/api/posts/${id}`);
-        // const data = await response.json();
-        // setPost(data);
-        
-        // For now, using mock data
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const foundPost = mockPosts.find(p => p.id === id);
-        setPost(foundPost || null);
+        const response = await fetch(`https://rubricedge.com/wp-json/wp/v2/posts/${id}?_embed`);
+        const wpPost = await response.json();
+
+        const post: BlogPost = {
+          id: wpPost.id.toString(),
+          title: wpPost.title.rendered,
+          excerpt: wpPost.excerpt.rendered.replace(/<[^>]+>/g, ""), // remove HTML tags
+          content: wpPost.content.rendered,
+          author: wpPost._embedded?.author?.[0]?.name || "Unknown",
+          publishedAt: wpPost.date,
+          readTime: "3 min read", // Optional: can use ACF or custom logic
+          tags: wpPost.tags.map((id: number) => `Tag-${id}`), // Optional: Tag names need another API call
+          imageUrl: wpPost._embedded?.['wp:featuredmedia']?.[0]?.source_url || ""
+        };
+
+        setPost(post);
       } catch (error) {
         console.error('Failed to fetch post:', error);
+        setPost(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPost();
+    if (id) {
+      fetchPost();
+    }
   }, [id]);
 
   if (loading) {
@@ -277,7 +149,7 @@ const Post = () => {
           <div className="bg-white rounded-xl p-8 md:p-12 shadow-sm">
             <div 
               className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-600 prose-a:text-blue-600 prose-strong:text-gray-900 prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-pre:bg-gray-900"
-              dangerouslySetInnerHTML={{ __html: post.content.replace(/\n/g, '<br>') }}
+              dangerouslySetInnerHTML={{ __html: post.content }}
             />
           </div>
         </div>
